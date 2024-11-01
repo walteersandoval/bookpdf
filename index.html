@@ -592,264 +592,312 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
  <script>
 // script.js
-        const pdfUpload = document.getElementById("pdf-upload");
-        const uploadContainer = document.getElementById("upload-container");
-        const readerContainer = document.getElementById("reader-container");
-        const pagesContainer = document.getElementById("pages-container");
-        const controlsModal = document.getElementById('controls-modal');
-        const bookmarksModal = document.getElementById('bookmarks-modal');
-        let markedPages = new Set();
-        let currentPageIndex = 0;
-        let totalPages = 0;
-        let pagesText = [];
-        let fontSize = 16;
-        let debounceTimer;
-        let bookTitle = "Nombre del Libro";
+const pdfUpload = document.getElementById("pdf-upload");
+const uploadContainer = document.getElementById("upload-container");
+const readerContainer = document.getElementById("reader-container");
+const pagesContainer = document.getElementById("pages-container");
+const controlsModal = document.getElementById('controls-modal');
+const bookmarksModal = document.getElementById('bookmarks-modal');
+let markedPages = new Set();
+let currentPageIndex = 0;
+let totalPages = 0;
+let pagesText = [];
+let fontSize = 18;
+let debounceTimer;
+let bookTitle = "Nombre del Libro";
 
-        let startX = 0;
-        let endX = 0;
+let startX = 0;
+let endX = 0;
 
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js";
-        loadBookmarks();
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js";
+loadBookmarks();
 
-        function toggleTheme() {
-            document.body.classList.toggle('theme-dark');
-        }
+function toggleTheme() {
+    document.body.classList.toggle('theme-dark');
+}
 
-        function increaseFontSize() {
-            if (fontSize < 36) {
-                fontSize += 2;
-                adjustFontSize();
-            }
-        }
+function increaseFontSize() {
+    if (fontSize < 36) {
+        fontSize += 2;
+        adjustFontSize();
+    }
+}
 
-        function decreaseFontSize() {
-            if (fontSize > 12) {
-                fontSize -= 2;
-                adjustFontSize();
-            }
-        }
+function decreaseFontSize() {
+    if (fontSize > 12) {
+        fontSize -= 2;
+        adjustFontSize();
+    }
+}
 
-        function adjustFontSize() {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                paginateText();
-            }, 300);
-        }
+function adjustFontSize() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        paginateText();
+    }, 300);
+}
 
-        function toggleBookmark() {
-            const currentPageNumber = currentPageIndex + 1;
-            if (markedPages.has(currentPageNumber)) {
-                markedPages.delete(currentPageNumber);
-                updateBookmarkIcon(false);
-            } else {
-                markedPages.add(currentPageNumber);
-                updateBookmarkIcon(true);
-            }
-            saveBookmarks();
-        }
+function toggleBookmark() {
+    const currentPageNumber = currentPageIndex + 1;
+    if (markedPages.has(currentPageNumber)) {
+        markedPages.delete(currentPageNumber);
+        updateBookmarkIcon(false);
+    } else {
+        markedPages.add(currentPageNumber);
+        updateBookmarkIcon(true);
+    }
+    saveBookmarks();
+}
 
-        function updateBookmarkIcon(isMarked) {
-            const bookmarkButton = document.querySelector('.control-button.bookmark');
-            if (bookmarkButton) {
-                bookmarkButton.innerHTML = isMarked
-                    ? '<span class="material-icons-outlined">bookmark</span>'
-                    : '<span class="material-icons-outlined">bookmark_border</span>';
-            }
-        }
+function updateBookmarkIcon(isMarked) {
+    const bookmarkButton = document.querySelector('.control-button.bookmark');
+    if (bookmarkButton) {
+        bookmarkButton.innerHTML = isMarked
+            ? '<span class="material-icons-outlined">bookmark</span>'
+            : '<span class="material-icons-outlined">bookmark_border</span>';
+    }
+}
 
-        function showBookmarks() {
-            const bookmarksList = document.getElementById('bookmarks-list');
-            bookmarksList.innerHTML = '';
+function showBookmarks() {
+    const bookmarksList = document.getElementById('bookmarks-list');
+    bookmarksList.innerHTML = '';
 
-            if (markedPages.size === 0) {
-                bookmarksList.innerHTML = '<p>No hay páginas marcadas.</p>';
-            } else {
-                Array.from(markedPages).sort((a, b) => a - b).forEach(pageNumber => {
-                    const bookmarkItem = document.createElement('div');
-                    bookmarkItem.classList.add('bookmark-item');
-                    bookmarkItem.textContent = 'Página ' + pageNumber;
-                    bookmarkItem.onclick = () => {
-                        goToPage(pageNumber - 1);
-                        closeBookmarks();
-                        toggleControls();
-                    };
-                    bookmarksList.appendChild(bookmarkItem);
-                });
-            }
+    if (markedPages.size === 0) {
+        bookmarksList.innerHTML = '<p>No hay páginas marcadas.</p>';
+    } else {
+        Array.from(markedPages).sort((a, b) => a - b).forEach(pageNumber => {
+            const bookmarkItem = document.createElement('div');
+            bookmarkItem.classList.add('bookmark-item');
+            bookmarkItem.textContent = 'Página ' + pageNumber;
+            bookmarkItem.onclick = () => {
+                goToPage(pageNumber - 1);
+                closeBookmarks();
+                toggleControls();
+            };
+            bookmarksList.appendChild(bookmarkItem);
+        });
+    }
 
-            bookmarksModal.classList.add('open');
-        }
+    bookmarksModal.classList.add('open');
+}
 
-        function closeBookmarks() {
-            bookmarksModal.classList.remove('open');
-        }
+function closeBookmarks() {
+    bookmarksModal.classList.remove('open');
+}
 
-        function saveBookmarks() {
-            localStorage.setItem('bookmarks', JSON.stringify(Array.from(markedPages)));
-        }
+function saveBookmarks() {
+    localStorage.setItem('bookmarks', JSON.stringify(Array.from(markedPages)));
+}
 
-        function loadBookmarks() {
-            const bookmarks = JSON.parse(localStorage.getItem('bookmarks'));
-            if (bookmarks) markedPages = new Set(bookmarks);
-        }
+function loadBookmarks() {
+    const bookmarks = JSON.parse(localStorage.getItem('bookmarks'));
+    if (bookmarks) markedPages = new Set(bookmarks);
+}
 
-        function showSearch() {
-            const searchBox = document.getElementById("search-box");
-            searchBox.classList.toggle('visible');
-            if (searchBox.classList.contains('visible')) searchBox.focus();
-        }
+function showSearch() {
+    const searchBox = document.getElementById("search-box");
+    searchBox.classList.toggle('visible');
+    if (searchBox.classList.contains('visible')) searchBox.focus();
+}
 
-        function escapeRegExp(string) {
-            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        }
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\$&');
+}
 
-        function searchText(query) {
-            const pageDiv = document.querySelector('.page');
-            const p = pageDiv.querySelector('p');
-            const originalText = p.dataset.originalText;
+function searchText(query) {
+    const pageDiv = document.querySelector('.page');
+    const p = pageDiv.querySelector('div.page-content');
+    const originalText = p.dataset.originalText;
 
-            if (query) {
-                const regex = new RegExp(escapeRegExp(query), "gi");
-                p.innerHTML = originalText.replace(regex, match => `<span class="highlight">${match}</span>`);
-            } else {
-                p.innerHTML = originalText;
-            }
-        }
+    if (query) {
+        const regex = new RegExp(escapeRegExp(query), "gi");
+        p.innerHTML = originalText.replace(regex, match => `<span class="highlight">${match}</span>`);
+    } else {
+        p.innerHTML = originalText;
+    }
+}
 
-        function goToPage(index) {
-            if (index >= 0 && index < totalPages) {
-                const oldPage = document.querySelector('.page');
-                currentPageIndex = index;
-                renderCurrentPage('next', oldPage);
-            }
-        }
+function goToPage(index) {
+    if (index >= 0 && index < totalPages) {
+        const oldPage = document.querySelector('.page');
+        currentPageIndex = index;
+        renderCurrentPage('next', oldPage);
+    }
+}
 
-        pdfUpload.addEventListener("change", async (event) => {
-            const file = event.target.files[0];
-            if (file && file.type === "application/pdf") {
-                bookTitle = file.name.replace('.pdf', '');
-                const fileReader = new FileReader();
-                fileReader.onload = async function() {
-                    const typedarray = new Uint8Array(this.result);
-                    const pdfDoc = await pdfjsLib.getDocument(typedarray).promise;
-                    pagesText = [];
-                    currentPageIndex = 0;
+pdfUpload.addEventListener("change", async (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === "application/pdf") {
+        bookTitle = file.name.replace('.pdf', '');
+        const fileReader = new FileReader();
+        fileReader.onload = async function() {
+            const typedarray = new Uint8Array(this.result);
+            const pdfDoc = await pdfjsLib.getDocument(typedarray).promise;
+            pagesText = [];
+            currentPageIndex = 0;
 
-                    for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-                        const page = await pdfDoc.getPage(pageNum);
-                        const textContent = await page.getTextContent();
-                        pagesText.push(textContent.items.map(item => item.str).join(" "));
+            for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+                const page = await pdfDoc.getPage(pageNum);
+                const textContent = await page.getTextContent();
+                let pageHtml = '';
+
+                textContent.items.forEach((item) => {
+                    if (item.str.trim() !== '') {
+                        if (item.fontName && item.fontName.includes('Bold')) {
+                            pageHtml += `<strong>${item.str}</strong> `;
+                        } else if (item.transform[0] > 20) { // Assuming larger font size for headings
+                            pageHtml += `<h2>${item.str}</h2>`;
+                        } else {
+                            pageHtml += item.str + ' ';
+                        }
                     }
+                });
 
-                    uploadContainer.classList.add('hidden');
-                    readerContainer.classList.remove('hidden');
-                    paginateText();
-                };
-                fileReader.readAsArrayBuffer(file);
-            } else {
-                alert("Por favor, selecciona un archivo PDF válido.");
-            }
-        });
-
-        function paginateText() {
-            const viewportWidth = pagesContainer.clientWidth;
-            const viewportHeight = pagesContainer.clientHeight;
-            const avgCharWidth = fontSize * 0.6;
-            const charsPerLine = Math.floor(viewportWidth / avgCharWidth);
-            const lineHeight = fontSize * 1.6;
-            const linesPerPage = Math.floor(viewportHeight / lineHeight);
-            const charsPerPage = charsPerLine * linesPerPage;
-
-            let allText = pagesText.join('\n\n');
-            totalPages = Math.ceil(allText.length / charsPerPage);
-
-            window.paginatedText = [];
-            for (let i = 0; i < totalPages; i++) {
-                const start = i * charsPerPage;
-                const end = start + charsPerPage;
-                window.paginatedText.push(allText.slice(start, end));
+                pagesText.push(pageHtml.trim());
             }
 
-            renderCurrentPage();
+            uploadContainer.classList.add('hidden');
+            readerContainer.classList.remove('hidden');
+            paginateText();
+        };
+        fileReader.readAsArrayBuffer(file);
+    } else {
+        alert("Por favor, selecciona un archivo PDF válido.");
+    }
+});
+
+function paginateText() {
+    const viewportHeight = pagesContainer.clientHeight;
+    const viewportWidth = pagesContainer.clientWidth;
+    const charsPerLine = Math.floor(viewportWidth / (fontSize * 0.6));
+    const lineHeight = fontSize * 1.8;
+    const linesPerPage = Math.floor(viewportHeight / lineHeight);
+    const charsPerPage = charsPerLine * linesPerPage;
+
+    let allText = pagesText.join('\n\n');
+    window.paginatedText = [];
+    let currentPageText = '';
+    let currentLineCount = 0;
+
+    allText.split(/(\bPART\s\d+|CHAPTER\s\d+|\d+\.|\n\n|\n-\s|•)/g).forEach((segment) => {
+        if (segment.trim() === '') return;
+
+        if (/\bPART\s\d+|CHAPTER\s\d+|\d+\./.test(segment)) {
+            if (currentPageText.trim() !== '') {
+                window.paginatedText.push(currentPageText.trim());
+                currentPageText = '';
+            }
+            currentPageText += `<h2 style="text-align: center;">${segment.trim()}</h2><br/><br/>`;
+        } else if (segment.trim() === '•' || segment.trim().startsWith('-')) {
+            currentPageText += `<br/><strong>${segment.trim()}</strong><br/>`;
+        } else {
+            segment.split('\n').forEach((line, index) => {
+                line.split(' ').forEach((word, wordIndex) => {
+                    if ((currentPageText.length + word.length + 1) / charsPerLine > linesPerPage) {
+                        window.paginatedText.push(currentPageText.trim());
+                        currentPageText = word + ' ';
+                        currentLineCount = 1;
+                    } else {
+                        currentPageText += word + ' ';
+                    }
+                });
+                currentPageText += '<br/>'; // Add line break to maintain structure
+            });
         }
+    });
 
-        function renderCurrentPage(direction = 'next', oldPage = null) {
-            const pageText = window.paginatedText[currentPageIndex] || '';
-            const pageDiv = document.createElement('div');
-            pageDiv.className = 'page';
-            pageDiv.dataset.pageNumber = currentPageIndex + 1;
+    if (currentPageText.trim()) {
+        window.paginatedText.push(currentPageText.trim());
+    }
 
-            const titleDiv = document.createElement('div');
-            titleDiv.className = 'book-title';
-            titleDiv.textContent = bookTitle;
+    totalPages = window.paginatedText.length;
+    renderCurrentPage();
+}
 
-            const p = document.createElement('p');
-            p.style.fontSize = fontSize + 'px';
-            p.innerHTML = pageText;
-            p.dataset.originalText = pageText;
+function renderCurrentPage(direction = 'next', oldPage = null) {
+    const pageText = window.paginatedText[currentPageIndex] || '';
+    const pageDiv = document.createElement('div');
+    pageDiv.className = 'page';
+    pageDiv.dataset.pageNumber = currentPageIndex + 1;
 
-            const pageNumberDiv = document.createElement('div');
-            pageNumberDiv.className = 'page-number';
-            pageNumberDiv.textContent = `Página ${currentPageIndex + 1} de ${totalPages}`;
+    const pageContentDiv = document.createElement('div');
+    pageContentDiv.className = 'page-content';
+    pageContentDiv.style.fontSize = fontSize + 'px';
+    pageContentDiv.style.padding = '1rem'; // Reduce padding to minimize left whitespace
+    pageContentDiv.style.textAlign = 'justify';
+    pageContentDiv.style.lineHeight = '1.8';
+    pageContentDiv.style.wordSpacing = '0.1em'; // Ajuste adicional para mejor justificación
+    pageContentDiv.innerHTML = formatPageText(pageText);
+    pageContentDiv.dataset.originalText = pageText;
 
-            pageDiv.appendChild(titleDiv);
-            pageDiv.appendChild(p);
-            pageDiv.appendChild(pageNumberDiv);
+    const pageNumberDiv = document.createElement('div');
+    pageNumberDiv.className = 'page-number';
+    pageNumberDiv.textContent = `Page ${currentPageIndex + 1} of ${totalPages}`;
+    pageNumberDiv.style.textAlign = 'center';
+    pageNumberDiv.style.marginTop = '1rem';
+    pageNumberDiv.style.color = '#888';
 
-            if (oldPage) pagesContainer.removeChild(oldPage);
-            else pagesContainer.innerHTML = '';
+    pageDiv.appendChild(pageContentDiv);
+    pageDiv.appendChild(pageNumberDiv);
 
-            pagesContainer.appendChild(pageDiv);
+    if (oldPage) pagesContainer.removeChild(oldPage);
+    else pagesContainer.innerHTML = '';
 
-            updateBookmarkIcon(markedPages.has(currentPageIndex + 1));
-            updateProgressBar();
+    pagesContainer.appendChild(pageDiv);
 
-            pageDiv.addEventListener('touchstart', handleTouchStart, false);
-            pageDiv.addEventListener('touchend', handleTouchEnd, false);
-        }
+    updateBookmarkIcon(markedPages.has(currentPageIndex + 1));
+    updateProgressBar();
 
-        function updateProgressBar() {
-            const progressBar = document.getElementById('reading-progress');
-            const progressPercentageText = document.getElementById('progress-percentage');
-            const progressPercentage = ((currentPageIndex + 1) / totalPages) * 100;
-            progressBar.style.width = progressPercentage + '%';
-            progressPercentageText.textContent = Math.floor(progressPercentage) + '%';
-        }
+    pageDiv.addEventListener('touchstart', handleTouchStart, false);
+    pageDiv.addEventListener('touchend', handleTouchEnd, false);
+}
 
-        function toggleControls() {
-            controlsModal.classList.toggle('open');
-        }
+function formatPageText(text) {
+    return text.replace(/\n/g, '<br/>'); // Reemplazar saltos de línea con <br/> para mantener formato
+}
 
-        function handleTouchStart(event) {
-            startX = event.touches[0].clientX;
-        }
+function updateProgressBar() {
+    const progressBar = document.getElementById('reading-progress');
+    const progressPercentageText = document.getElementById('progress-percentage');
+    const progressPercentage = ((currentPageIndex + 1) / totalPages) * 100;
+    progressBar.style.width = progressPercentage + '%';
+    progressPercentageText.textContent = Math.floor(progressPercentage) + '%';
+}
 
-        function handleTouchEnd(event) {
-            endX = event.changedTouches[0].clientX;
-            handleSwipe();
-        }
+function toggleControls() {
+    controlsModal.classList.toggle('open');
+}
 
-        function handleSwipe() {
-            const swipeThreshold = 50;
-            if (startX - endX > swipeThreshold) goToPage(currentPageIndex + 1);
-            else if (endX - startX > swipeThreshold) goToPage(currentPageIndex - 1);
-        }
+function handleTouchStart(event) {
+    startX = event.touches[0].clientX;
+}
 
-        controlsModal.addEventListener('click', function(event) {
-            if (event.target === this) toggleControls();
-        });
+function handleTouchEnd(event) {
+    endX = event.changedTouches[0].clientX;
+    handleSwipe();
+}
 
-        bookmarksModal.addEventListener('click', function(event) {
-            if (event.target === this) closeBookmarks();
-        });
+function handleSwipe() {
+    const swipeThreshold = 50;
+    if (startX - endX > swipeThreshold) goToPage(currentPageIndex + 1);
+    else if (endX - startX > swipeThreshold) goToPage(currentPageIndex - 1);
+}
 
-        window.addEventListener('resize', () => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                paginateText();
-            }, 300);
-        });
+controlsModal.addEventListener('click', function(event) {
+    if (event.target === this) toggleControls();
+});
+
+bookmarksModal.addEventListener('click', function(event) {
+    if (event.target === this) closeBookmarks();
+});
+
+window.addEventListener('resize', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        paginateText();
+    }, 300);
+});
+
     </script>
   </body>
 </html>
