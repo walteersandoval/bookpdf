@@ -701,7 +701,7 @@ function showSearch() {
 }
 
 function escapeRegExp(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\$&');
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function searchText(query) {
@@ -711,6 +711,7 @@ function searchText(query) {
 
     if (query) {
         const regex = new RegExp(escapeRegExp(query), "gi");
+        // Usar una función de reemplazo que preserve las etiquetas HTML existentes
         p.innerHTML = originalText.replace(regex, match => `<span class="highlight">${match}</span>`);
     } else {
         p.innerHTML = originalText;
@@ -743,12 +744,16 @@ pdfUpload.addEventListener("change", async (event) => {
 
                 textContent.items.forEach((item) => {
                     if (item.str.trim() !== '') {
-                        if (item.fontName && item.fontName.includes('Bold')) {
+                        const isBold = item.fontName && /Bold|bold|Heavy|Black/.test(item.fontName);
+                        const isHeading = item.transform[0] > 20; // Asumiendo tamaño de fuente mayor para encabezados
+                        if (isBold && isHeading) {
+                            pageHtml += `<h2 style="font-size: ${fontSize * 1.5}px; text-align: center;"><strong>${item.str}</strong></h2>`;
+                        } else if (isBold) {
                             pageHtml += `<strong>${item.str}</strong> `;
-                        } else if (item.transform[0] > 20) { // Assuming larger font size for headings
-                            pageHtml += `<h2>${item.str}</h2>`;
+                        } else if (isHeading) {
+                            pageHtml += `<h2 style="font-size: ${fontSize * 1.5}px; text-align: center;">${item.str}</h2>`;
                         } else {
-                            pageHtml += item.str + ' ';
+                            pageHtml += `${item.str} `;
                         }
                     }
                 });
@@ -787,21 +792,13 @@ function paginateText() {
                 window.paginatedText.push(currentPageText.trim());
                 currentPageText = '';
             }
-            currentPageText += `<h2 style="text-align: center;">${segment.trim()}</h2><br/><br/>`;
+            currentPageText += `<h2 style="text-align: center; font-size: ${fontSize * 1.5}px;">${segment.trim()}</h2><br/><br/>`;
         } else if (segment.trim() === '•' || segment.trim().startsWith('-')) {
             currentPageText += `<br/><strong>${segment.trim()}</strong><br/>`;
         } else {
             segment.split('\n').forEach((line, index) => {
-                line.split(' ').forEach((word, wordIndex) => {
-                    if ((currentPageText.length + word.length + 1) / charsPerLine > linesPerPage) {
-                        window.paginatedText.push(currentPageText.trim());
-                        currentPageText = word + ' ';
-                        currentLineCount = 1;
-                    } else {
-                        currentPageText += word + ' ';
-                    }
-                });
-                currentPageText += '<br/>'; // Add line break to maintain structure
+                // Aquí preservamos las etiquetas HTML existentes, como <strong>
+                currentPageText += line + '<br/>'; // Añadir salto de línea para mantener la estructura
             });
         }
     });
@@ -823,7 +820,7 @@ function renderCurrentPage(direction = 'next', oldPage = null) {
     const pageContentDiv = document.createElement('div');
     pageContentDiv.className = 'page-content';
     pageContentDiv.style.fontSize = fontSize + 'px';
-    pageContentDiv.style.padding = '1rem'; // Reduce padding to minimize left whitespace
+    pageContentDiv.style.padding = '1rem'; // Reducir padding para minimizar espacio en blanco izquierdo
     pageContentDiv.style.textAlign = 'justify';
     pageContentDiv.style.lineHeight = '1.8';
     pageContentDiv.style.wordSpacing = '0.1em'; // Ajuste adicional para mejor justificación
@@ -832,7 +829,7 @@ function renderCurrentPage(direction = 'next', oldPage = null) {
 
     const pageNumberDiv = document.createElement('div');
     pageNumberDiv.className = 'page-number';
-    pageNumberDiv.textContent = `Page ${currentPageIndex + 1} of ${totalPages}`;
+    pageNumberDiv.textContent = `Página ${currentPageIndex + 1} de ${totalPages}`;
     pageNumberDiv.style.textAlign = 'center';
     pageNumberDiv.style.marginTop = '1rem';
     pageNumberDiv.style.color = '#888';
