@@ -2,7 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
     <title>Visor de PDF Moderno</title>
     <!-- Icono de la aplicación -->
     <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -54,7 +55,6 @@
         width: 100%;
         height: 100%;
         position: relative;
-        perspective: 1000px;
     }
 
     .page {
@@ -102,7 +102,7 @@
         width: 94vw;
         transform: translateX(400px);
         filter: blur(0px);
-        transition: transform 0.3s ease-out; /* Reducido de 0.6s a 0.3s */
+        transition: transform 0.3s ease-out; /* Transición simplificada */
         z-index: 10;
         background-color: var(--background-color, #ffffff);
         color: var(--text-color, #000000);
@@ -120,28 +120,9 @@
         box-shadow: inset 0px 0px 5px rgba(0, 0, 0, 0.2);
     }
 
-    .page.next-page-preview {
-        transform: scale(0.95);
-        filter: blur(2px);
-        transition: transform 0.3s ease-out; /* Reducido de 0.6s a 0.3s */
-        z-index: 5;
-    }
+    /* Eliminada la previsualización de la página siguiente para simplificar */
 
-    .page.paging-slide-enter {
-        transform: translateX(100%);
-        transition: transform 0.3s ease-out; /* Reducido de 0.6s a 0.3s */
-        transform-origin: right center;
-        perspective: 1000px;
-        rotateY(-10deg);
-    }
-
-    .page.paging-slide-exit-active {
-        transform: translateX(-100%);
-        transition: transform 0.3s ease-out; /* Reducido de 0.6s a 0.3s */
-        transform-origin: left center;
-        perspective: 1000px;
-        rotateY(10deg);
-    }
+    /* Eliminadas las clases de transición de entrada y salida */
 
     @media screen and (max-width: 600px) {
         body {
@@ -476,7 +457,7 @@
         height: 100%;
         width: 0%;
         background-color: #6200ee;
-        transition: width 0.3s ease-in-out; /* Reducido de 0.5s a 0.3s */
+        transition: width 0.3s ease-in-out; /* Transición simplificada */
     }
 
     .progress-percentage {
@@ -910,22 +891,21 @@
             pageDiv.appendChild(pageNumberDiv);
 
             if (oldPage) {
-                const exitClass = `paging-${currentTransition}-exit`;
-                oldPage.classList.add(exitClass);
+                oldPage.classList.add('exiting');
                 setTimeout(() => {
                     pagesContainer.removeChild(oldPage);
-                }, 300); // Reducido de 600ms a 300ms para coincidir con la transición CSS
+                }, 300); // Temporizador ajustado para coincidir con la transición
             } else {
                 pagesContainer.innerHTML = '';
             }
 
             pagesContainer.appendChild(pageDiv);
 
-            const enterClass = `paging-${currentTransition}-enter`;
-            pageDiv.classList.add(enterClass);
+            // Transición simple sin animación de entrada
+            pageDiv.style.transform = 'translateX(100%)';
             setTimeout(() => {
-                pageDiv.classList.remove(enterClass);
-            }, 300); // Reducido de 600ms a 300ms para coincidir con la transición CSS
+                pageDiv.style.transform = 'translateX(0)';
+            }, 10); // Pequeño retraso para activar la transición
 
             updateBookmarkIcon(markedPages.has(currentPageIndex + 1));
             updateProgressBar();
@@ -953,22 +933,6 @@
             const pageDiv = document.querySelector('.page');
             pageDiv.classList.add('dragging');
             pageDiv.style.zIndex = 10;
-
-            // Mostrar la página siguiente como previsualización
-            const nextIndex = currentPageIndex + 1;
-            if (nextIndex < totalPages) {
-                const nextPageDiv = document.createElement('div');
-                nextPageDiv.className = 'page next-page-preview';
-                nextPageDiv.dataset.pageNumber = nextIndex + 1;
-                const nextText = window.paginatedText[nextIndex] || '';
-                const p = document.createElement('p');
-                p.style.fontSize = fontSize + 'rem';
-                p.innerHTML = nextText;
-                p.dataset.originalText = nextText;
-                nextPageDiv.appendChild(p);
-                nextPageDiv.style.zIndex = 5;
-                pagesContainer.appendChild(nextPageDiv);
-            }
         }
 
         function handleTouchMove(event) {
@@ -991,11 +955,6 @@
                 goToPage(currentPageIndex - 1);
             } else {
                 pageDiv.style.transform = `translateX(0)`;
-            }
-            // Remover la previsualización de la página siguiente
-            const nextPagePreview = document.querySelector('.next-page-preview');
-            if (nextPagePreview) {
-                pagesContainer.removeChild(nextPagePreview);
             }
         }
 
@@ -1072,4 +1031,3 @@
     </script>
 </body>
 </html>
-
