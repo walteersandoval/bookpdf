@@ -27,7 +27,7 @@
         padding: 0;
         overflow: hidden;
         transition: background-color 0.3s, color 0.3s;
-        font-size: 1rem; /* Base font size */
+        font-size: 1rem; /* Tamaño de fuente base */
     }
 
     #app {
@@ -73,7 +73,6 @@
         background-color: var(--background-color, #ffffff);
         z-index: 1;
         color: var(--text-color, #000000);
-        transition: background-color 0.3s, color 0.3s, transform 0.3s ease-out;
         text-align: justify; /* Justificación del texto */
         line-height: 1.6; /* Espaciado entre líneas */
         will-change: transform;
@@ -102,7 +101,6 @@
         width: 94vw;
         transform: translateX(400px);
         filter: blur(0px);
-        transition: transform 0.3s ease-out; /* Transición simplificada */
         z-index: 10;
         background-color: var(--background-color, #ffffff);
         color: var(--text-color, #000000);
@@ -119,10 +117,6 @@
         clip-path: polygon(100% 0, 0% 100%, 100% 100%);
         box-shadow: inset 0px 0px 5px rgba(0, 0, 0, 0.2);
     }
-
-    /* Eliminada la previsualización de la página siguiente para simplificar */
-
-    /* Eliminadas las clases de transición de entrada y salida */
 
     @media screen and (max-width: 600px) {
         body {
@@ -830,7 +824,15 @@
                     for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
                         const page = await pdfDoc.getPage(pageNum);
                         const textContent = await page.getTextContent();
-                        pagesText.push(textContent.items.map(item => item.str).join(" "));
+                        const pageItems = textContent.items.map(item => {
+                            const fontName = item.fontName || '';
+                            const isBold = /bold/i.test(fontName);
+                            return {
+                                str: item.str,
+                                isBold: isBold
+                            };
+                        });
+                        pagesText.push(pageItems);
                     }
 
                     uploadContainer.classList.add('hidden');
@@ -852,21 +854,40 @@
             const linesPerPage = Math.floor(viewportHeight / (lineHeight * 16)); // 16px base
             const charsPerPage = charsPerLine * linesPerPage;
 
-            let allText = pagesText.join('\n\n');
-            totalPages = Math.ceil(allText.length / charsPerPage);
+            // Cada página ya tiene una lista de objetos con 'str' y 'isBold'
+            // Convertir esto en páginas paginadas que respeten los estilos
 
+            // Reiniciar las páginas paginadas
             window.paginatedText = [];
-            for (let i = 0; i < totalPages; i++) {
-                const start = i * charsPerPage;
-                const end = start + charsPerPage;
-                window.paginatedText.push(allText.slice(start, end));
-            }
+            totalPages = 0;
+
+            pagesText.forEach(pageItems => {
+                let currentPage = [];
+                let currentChars = 0;
+
+                pageItems.forEach(item => {
+                    const itemLength = item.str.length;
+                    if (currentChars + itemLength > charsPerPage) {
+                        window.paginatedText.push(currentPage);
+                        totalPages++;
+                        currentPage = [];
+                        currentChars = 0;
+                    }
+                    currentPage.push(item);
+                    currentChars += itemLength;
+                });
+
+                if (currentPage.length > 0) {
+                    window.paginatedText.push(currentPage);
+                    totalPages++;
+                }
+            });
 
             renderCurrentPage();
         }
 
         function renderCurrentPage(transition = 'next', oldPage = null) {
-            const pageText = window.paginatedText[currentPageIndex] || '';
+            const pageItems = window.paginatedText[currentPageIndex] || [];
             const pageDiv = document.createElement('div');
             pageDiv.className = 'page';
             pageDiv.dataset.pageNumber = currentPageIndex + 1;
@@ -879,8 +900,10 @@
             p.style.fontSize = fontSize + 'rem';
             p.style.lineHeight = '1.6';
             p.style.textAlign = 'justify';
-            p.innerHTML = pageText;
-            p.dataset.originalText = pageText;
+            p.innerHTML = pageItems.map(item => {
+                return item.isBold ? `<strong>${escapeHTML(item.str)}</strong>` : escapeHTML(item.str);
+            }).join(' ');
+            p.dataset.originalText = pageItems.map(item => item.str).join(' ');
 
             const pageNumberDiv = document.createElement('div');
             pageNumberDiv.className = 'page-number';
@@ -891,21 +914,15 @@
             pageDiv.appendChild(pageNumberDiv);
 
             if (oldPage) {
-                oldPage.classList.add('exiting');
-                setTimeout(() => {
-                    pagesContainer.removeChild(oldPage);
-                }, 300); // Temporizador ajustado para coincidir con la transición
+                pagesContainer.removeChild(oldPage);
             } else {
                 pagesContainer.innerHTML = '';
             }
 
             pagesContainer.appendChild(pageDiv);
 
-            // Transición simple sin animación de entrada
-            pageDiv.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                pageDiv.style.transform = 'translateX(0)';
-            }, 10); // Pequeño retraso para activar la transición
+            // Renderización instantánea sin animación
+            // No se aplican transformaciones ni transiciones aquí
 
             updateBookmarkIcon(markedPages.has(currentPageIndex + 1));
             updateProgressBar();
@@ -1028,6 +1045,13 @@
                 paginateText();
             }, 300);
         });
+
+        // Función para escapar caracteres HTML
+        function escapeHTML(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
     </script>
 </body>
 </html>
